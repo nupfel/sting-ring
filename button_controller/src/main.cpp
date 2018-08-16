@@ -85,6 +85,7 @@ void loop() {
                 break;
         case SIMON_MODE:
                 simon();
+                break;
         default:
                 handleButtons();
                 if (millis() - last_button_press > IDLE_TIMEOUT) {
