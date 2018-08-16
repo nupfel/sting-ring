@@ -109,9 +109,7 @@ void pin_setup() {
 
         for (short int i = 0; i < NUM_POOFERS; i++) {
                 pinMode(poofer[i].pin, OUTPUT);
-                // pinMode(button[i], INPUT);
-                digitalWrite(poofer[i].pin, !poofer[i].state);
-                delay(500);
+                pinMode(button[i], INPUT);
                 digitalWrite(poofer[i].pin, poofer[i].state);
 #ifdef DEBUG
                 Serial.println("[pin setup] " + String(button[i]) + " -> " + String(poofer[i].pin));
