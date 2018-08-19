@@ -16,6 +16,8 @@ unsigned short int mode = DEFAULT_MODE;
 bool record = false;
 bool off = false;
 uint32_t last_button_press = 0;
+bool record_start = false;
+uint16_t eeAddr = 0;
 
 // List of patterns to cycle through.  Each is defined as a separate function below.
 SimplePatternList gPatterns = { pattern1 };
@@ -40,6 +42,7 @@ void loop() {
         case RECORD_MODE:
                 if (record) {
                         recordPattern();
+                        handleButtons();
                 }
                 else {
                         playPattern();
@@ -103,12 +106,16 @@ void handleModeRecord() {
         if (old_state && !mode_button_state && now - last_time > 50) {
                 mode++;
                 mode %= 3;
+                last_time = now;
 #ifdef DEBUG
                 Serial.println("[mode] " + String(mode));
-                if (mode == RECORD_MODE)
+#endif
+                if (mode == RECORD_MODE) {
+                        if (record) record_start = true;
+#ifdef DEBUG
                         Serial.println("[record] " + String(record));
 #endif
-                last_time = now;
+                }
         }
 
         if (mode_button_state != old_state) {
@@ -118,9 +125,10 @@ void handleModeRecord() {
         bool record_switch_state = digitalRead(RECORD_PIN);
         if (record_switch_state != record && now - last_time > 50) {
                 record = !record;
+                last_time = now;
+                if (record) record_start = true;
 #ifdef DEBUG
                 Serial.println("[record] " + String(record));
-                last_time = now;
 #endif
         }
 }
@@ -144,11 +152,45 @@ void handleButtons() {
 }
 
 void recordPattern() {
+        static byte last_state = 0;
+        static byte current_state = 0;
+        static uint32_t record_start_time = 0;
+        static uint32_t last_time = millis();
+        uint32_t now = millis();
 
+        if (now - last_time < 100) return;
+
+        current_state = 0;
+
+        for (short int i = 0; i < NUM_POOFERS; i++) {
+                current_state |= digitalRead(button[i]) << i;
+        }
+
+        if (current_state != last_state) {
+                if (record_start) {
+                        eeAddr = 0;
+                        record_start_time = now;
+                        record_start = false;
+#ifdef DEBUG
+                        Serial.println("[recording] start");
+#endif
+                }
+
+                Record record = {current_state, now - record_start_time};
+                EEPROM.put(eeAddr, record);
+#ifdef DEBUG
+                Serial.print("[recording] " + String(record.interval) + "ms ");
+                Serial.println(current_state, BIN);
+                Serial.println("[recording] EEPROM address: " + String(eeAddr));
+#endif
+                eeAddr += sizeof(record);
+                if (eeAddr >= int(EEPROM.length() / sizeof(record)) * sizeof(record)) eeAddr = 0;
+                last_state = current_state;
+                last_time = now;
+        }
 }
 
 void playPattern() {
-
 }
 
 void simon() {
