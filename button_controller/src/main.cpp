@@ -13,10 +13,10 @@ Poofer poofer[NUM_POOFERS] = {
 
 const uint8_t button[NUM_POOFERS] = {8, 9, 10, 11, 12, 13};
 unsigned short int mode = DEFAULT_MODE;
-bool record = false;
+bool recording = false;
 bool off = false;
 uint32_t last_button_press = 0;
-bool record_start = false;
+bool recording_start = false;
 uint16_t eeAddr = 0;
 
 // List of patterns to cycle through.  Each is defined as a separate function below.
@@ -40,7 +40,7 @@ void loop() {
         handleModeRecord();
         switch (mode) {
         case RECORD_MODE:
-                if (record) {
+                if (recording) {
                         recordPattern();
                         handleButtons();
                 }
@@ -110,12 +110,22 @@ void handleModeRecord() {
 #ifdef DEBUG
                 Serial.println("[mode] " + String(mode));
 #endif
-                if (mode == RECORD_MODE) {
-                        if (record) record_start = true;
+                switch (mode) {
+                case RECORD_MODE:
+                        if (recording) {
+                                recording_start = true;
+                        }
+                        else {
+                                eeAddr = 0;
+                        }
 #ifdef DEBUG
-                        Serial.println("[record] " + String(record));
+                        Serial.println("[recording] " + String(recording));
 #endif
+                        break;
+                case SIMON_MODE:
+                        break;
                 }
+
         }
 
         if (mode_button_state != old_state) {
@@ -123,12 +133,17 @@ void handleModeRecord() {
         }
 
         bool record_switch_state = digitalRead(RECORD_PIN);
-        if (record_switch_state != record && now - last_time > 50) {
-                record = !record;
+        if (record_switch_state != recording && now - last_time > 50) {
+                recording = !recording;
                 last_time = now;
-                if (record) record_start = true;
+                if (recording) {
+                        recording_start = true;
+                }
+                else {
+                        eeAddr = 0;
+                }
 #ifdef DEBUG
-                Serial.println("[record] " + String(record));
+                Serial.println("[recording] " + String(recording));
 #endif
         }
 }
@@ -151,7 +166,7 @@ void handleButtons() {
 void recordPattern() {
         static byte last_state = 0;
         static byte current_state = 0;
-        static uint32_t record_start_time = 0;
+        static uint32_t recording_start_time = 0;
         static uint32_t last_time = millis();
         uint32_t now = millis();
 
@@ -164,16 +179,16 @@ void recordPattern() {
         }
 
         if (current_state != last_state) {
-                if (record_start) {
+                if (recording_start) {
                         eeAddr = 0;
-                        record_start_time = now;
-                        record_start = false;
+                        recording_start_time = now;
+                        recording_start = false;
 #ifdef DEBUG
                         Serial.println("[recording] start");
 #endif
                 }
 
-                Record record = {current_state, now - record_start_time};
+                Record record = {current_state, now - recording_start_time};
                 EEPROM.put(eeAddr, record);
 #ifdef DEBUG
                 Serial.print("[recording] " + String(record.interval) + "ms ");
