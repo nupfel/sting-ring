@@ -3,12 +3,12 @@
 #include "main.h"
 
 Poofer poofer[NUM_POOFERS] = {
-        {2, true},
-        {3, false},
-        {4, false},
-        {5, false},
-        {6, false},
-        {7, true}
+        {2, false, true},
+        {3, false, false},
+        {4, false, false},
+        {5, false, false},
+        {6, false, false},
+        {7, false, true}
 };
 
 const uint8_t button[NUM_POOFERS] = {8, 9, 10, 11, 12, 13};
@@ -75,7 +75,7 @@ void pin_setup() {
         for (short int i = 0; i < NUM_POOFERS; i++) {
                 pinMode(poofer[i].pin, OUTPUT);
                 pinMode(button[i], INPUT);
-                digitalWrite(poofer[i].pin, poofer[i].state);
+                digitalWrite(poofer[i].pin, poofer[i].off);
 #ifdef DEBUG
                 Serial.println("[pin setup] " + String(button[i]) + " -> " + String(poofer[i].pin));
 #endif
@@ -134,19 +134,16 @@ void handleModeRecord() {
 }
 
 void handleButtons() {
-        static bool last_state[NUM_POOFERS] = { false, false, false, false, false, false };
-
         for (short int i = 0; i < NUM_POOFERS; i++) {
                 bool button_state = digitalRead(button[i]);
 
-                if (button_state != last_state[i]) {
+                if (button_state != poofer[i].state) {
 #ifdef DEBUG
                         Serial.println("fire " + String(poofer[i].pin) + ": " + String(button_state));
 #endif
                         poofer[i].state = !poofer[i].state;
-                        digitalWrite(poofer[i].pin, poofer[i].state);
+                        digitalWrite(poofer[i].pin, poofer[i].state ^ poofer[i].off);
                         last_button_press = millis();
-                        last_state[i] = !last_state[i];
                 }
         }
 }

@@ -35,6 +35,7 @@ void simon();
 struct Poofer {
         unsigned short int pin;
         bool state;
+        bool off;
 };
 
 typedef void (*SimplePatternList[])();
