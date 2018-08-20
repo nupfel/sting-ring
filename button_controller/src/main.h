@@ -15,6 +15,7 @@
 #define SIMON_MODE   2
 
 #define IDLE_TIMEOUT 10000
+#define PLAY_DELAY   1500
 
 // setup functions
 void pin_setup();

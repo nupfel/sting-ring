@@ -18,6 +18,7 @@ bool off = false;
 uint32_t last_button_press = 0;
 bool recording_start = false;
 uint16_t eeAddr = 0;
+const Record end_record = {0b10000000, 0};
 
 // List of patterns to cycle through.  Each is defined as a separate function below.
 SimplePatternList gPatterns = { pattern1 };
@@ -170,7 +171,7 @@ void recordPattern() {
         static uint32_t last_time = millis();
         uint32_t now = millis();
 
-        if (now - last_time < 100) return;
+        if (now - last_time < 5) return;
 
         current_state = 0;
 
@@ -197,12 +198,59 @@ void recordPattern() {
 #endif
                 eeAddr += sizeof(record);
                 if (eeAddr >= int(EEPROM.length() / sizeof(record)) * sizeof(record)) eeAddr = 0;
+                EEPROM.put(eeAddr, end_record);
                 last_state = current_state;
                 last_time = now;
         }
 }
 
 void playPattern() {
+        static Record record;
+        static uint32_t last_play = 0;
+        uint32_t now = millis();
+
+        EEPROM.get(eeAddr, record);
+
+        // check for end record, turn poofers off and start over
+        if (record.poofers & end_record.poofers) {
+                for (short int i = 0; i < NUM_POOFERS; i++) {
+                        digitalWrite(poofer[i].pin, poofer[i].off);
+                }
+                eeAddr = 0;
+                return;
+        }
+
+        // interval == 0 indicates start of a recorded pattern
+        if (record.interval == 0 && now >= (PLAY_DELAY + last_play)) {
+                if (now - last_play > PLAY_DELAY) {
+                        last_play = now;
+#ifdef DEBUG
+                        Serial.println("[playing] start " + String(last_play) + "ms");
+#endif
+                }
+        }
+
+        if (now >= (PLAY_DELAY + last_play + record.interval)) {
+#ifdef DEBUG
+                Serial.print("[playing] ");
+                Serial.print(record.poofers, BIN);
+                Serial.print(": ");
+#endif
+                for (short int i = 0; i < NUM_POOFERS; i++) {
+                        bool p = record.poofers & (1 << i);
+                        if (p != poofer[i].state) {
+#ifdef DEBUG
+                                Serial.print(String(i) + " ");
+#endif
+                                poofer[i].state = !poofer[i].state;
+                                digitalWrite(poofer[i].pin, poofer[i].state ^ poofer[i].off);
+                        }
+                }
+                eeAddr += sizeof(record);
+#ifdef DEBUG
+                Serial.println("eeAddr: " + String(eeAddr));
+#endif
+        }
 }
 
 void simon() {
