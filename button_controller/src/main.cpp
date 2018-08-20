@@ -43,7 +43,7 @@ void loop() {
         case RECORD_MODE:
                 if (recording) {
                         recordPattern();
-                        handleButtons();
+                        // handleButtons();
                 }
                 else {
                         playPattern();
